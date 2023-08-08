@@ -276,48 +276,6 @@ impl Expr {
             },
         }
     }
-    fn _parse_op_old(i: &str, first: Expr) -> ParseResult<&str, Self> {
-        enum State {
-            Atomic(Box<Expr>),
-            Incomplete(Box<Expr>, Op),
-            Complete(Box<Expr>, Op, Box<Expr>),
-        }
-        use State::*;
-        fn parse_op_internal(mut rest: &str, mut state: State) -> ParseResult<&str, Expr> {
-            loop {
-                match state {
-                    Atomic(b) => {
-                        let res = cut(Op::parse)(rest)?;
-                        rest = res.0;
-                        state = Incomplete(b, res.1);
-                    }
-                    Incomplete(b, op) => {
-                        let res = cut(Expr::parse_atomic)(rest)?;
-                        rest = res.0;
-                        state = Complete(b, op, Box::new(res.1));
-                    }
-                    Complete(b1, op, b2) => {
-                        let res = Op::parse.opt().parse(rest)?;
-                        match res.1 {
-                            None => {
-                                return Ok((res.0, Expr::Op(b1, op, b2)));
-                            }
-                            Some(new_op) => {
-                                if new_op <= op {
-                                    rest = res.0;
-                                    state = Incomplete(Box::new(Expr::Op(b1, op, b2)), new_op);
-                                } else {
-                                    let res = parse_op_internal(res.0, Incomplete(b2, new_op))?;
-                                    return Ok((res.0, Expr::Op(b1, op, Box::new(res.1))));
-                                }
-                            }
-                        }
-                    }
-                };
-            }
-        }
-        parse_op_internal(i, Atomic(Box::new(first)))
-    }
 }
 impl Parse<&str> for Expr {
     fn parse(i: &str) -> ParseResult<&str, Self> {
